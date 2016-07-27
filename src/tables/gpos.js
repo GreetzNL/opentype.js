@@ -198,10 +198,9 @@ function parseLookupTable(data, start) {
         // Return a function which finds the kerning values in the subtables.
         table.getKerningValue = function(leftGlyph, rightGlyph) {
             for (var i = subtables.length; i--;) {
-                var value = subtables[i](leftGlyph, rightGlyph);
+                var value = subtables[i] ? subtables[i](leftGlyph, rightGlyph) : 0;
                 if (value !== undefined) return value;
             }
-
             return 0;
         };
     }

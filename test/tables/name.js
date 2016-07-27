@@ -241,7 +241,7 @@ describe('tables/name.js', function() {
         // although there are probably not too many Inuit in Ethiopia.
         // Apple had run out of script codes and needed a quick hack.
         // The implementation uses a secondary look-up table for handling such
-        // corner cases (Inuktitut is not the only one), and this test exercises it.
+        // corner cases (Inuktitut is not the only one), and this test_scripts exercises it.
         var names = {
             fontFamily: {
                 iu: 'ᐊᐃᕕᖅ'
