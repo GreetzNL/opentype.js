@@ -98,17 +98,7 @@ Path.prototype.draw = function(ctx) {
 // See http://www.w3.org/TR/SVG/paths.html#PathData
 // Parameters:
 // - decimalPlaces: The amount of decimal places for floating-point values (default: 2)
-Path.prototype.toPathData = function(decimalPlaces) {
-    decimalPlaces = decimalPlaces !== undefined ? decimalPlaces : 2;
-
-    function floatToString(v) {
-        if (Math.round(v) === v) {
-            return '' + Math.round(v);
-        } else {
-            return v.toFixed(decimalPlaces);
-        }
-    }
-
+Path.prototype.toPathData = function() {
     function packValues() {
         var s = '';
         for (var i = 0; i < arguments.length; i += 1) {
@@ -117,9 +107,8 @@ Path.prototype.toPathData = function(decimalPlaces) {
                 s += ' ';
             }
 
-            s += floatToString(v);
+            s += Math.round(v * 100) / 100; //2x Faster than toFixed()
         }
-
         return s;
     }
 
