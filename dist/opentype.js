@@ -2415,6 +2415,7 @@ exports.Parser = Parser;
 // Paths can be drawn on a context using `draw`.
 function Path() {
     this.commands = [];
+    this.pathData;
     this.fill = 'black';
     this.stroke = null;
     this.strokeWidth = 1;
@@ -2508,35 +2509,25 @@ Path.prototype.draw = function(ctx) {
 // Parameters:
 // - decimalPlaces: The amount of decimal places for floating-point values (default: 2)
 Path.prototype.toPathData = function() {
-    function packValues() {
-        var s = '';
-        for (var i = 0; i < arguments.length; i += 1) {
-            var v = arguments[i];
-            if (v >= 0 && i > 0) {
-                s += ' ';
-            }
-
-            s += Math.round(v * 100) / 100; //2x Faster than toFixed()
-        }
-        return s;
+    if(this.pathData){
+        return this.pathData;
     }
-
     var d = '';
     for (var i = 0; i < this.commands.length; i += 1) {
         var cmd = this.commands[i];
         if (cmd.type === 'M') {
-            d += 'M' + packValues(cmd.x, cmd.y);
+            d += 'M' + cmd.x + ' ' + cmd.y;
         } else if (cmd.type === 'L') {
-            d += 'L' + packValues(cmd.x, cmd.y);
+            d += 'L' + cmd.x + ' ' + cmd.y;
         } else if (cmd.type === 'C') {
-            d += 'C' + packValues(cmd.x1, cmd.y1, cmd.x2, cmd.y2, cmd.x, cmd.y);
+            d += 'C' + cmd.x1 + ' ' + cmd.y1 + ' ' + cmd.x2 + ' ' + cmd.y2 + ' ' + cmd.x + ' ' + cmd.y;
         } else if (cmd.type === 'Q') {
-            d += 'Q' + packValues(cmd.x1, cmd.y1, cmd.x, cmd.y);
+            d += 'Q' + cmd.x1 + ' ' + cmd.y1 + ' ' + cmd.x + ' ' + cmd.y;
         } else if (cmd.type === 'Z') {
             d += 'Z';
         }
     }
-
+    this.pathData = d;
     return d;
 };
 
