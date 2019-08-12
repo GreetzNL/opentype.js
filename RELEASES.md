@@ -1,3 +1,133 @@
+1.1.0 (May 1, 2019)
+=====================
+* Support reading GSUB Single substitution format 1 (PR #382) (thanks @solomancode!)
+
+1.0.1 (April 19, 2019)
+=====================
+* Fix error if defaultLangSys is undefined (Issue #378)
+
+1.0.0 (April 17, 2019)
+=====================
+* Render arabic rtl text properly (PR #361, partial fix of #364) (thanks @solomancode!)
+* #361 introduced a breaking change to `Font.prototype.defaultRenderOptions`
+Before
+```js
+Font.prototype.defaultRenderOptions = {
+    kerning: true,
+    features: {
+        liga: true,
+        rlig: true
+    }
+};
+```
+
+Now
+```js
+Font.prototype.defaultRenderOptions = {
+    kerning: true,
+    features: [
+        /**
+         * these 4 features are required to render Arabic text properly
+         * and shouldn't be turned off when rendering arabic text.
+         */
+        { script: 'arab', tags: ['init', 'medi', 'fina', 'rlig'] },
+        { script: 'latn', tags: ['liga', 'rlig'] }
+    ]
+};
+```
+
+Also as this project is now using SemVer, the breaking change required a new major version, 1.0.0!
+
+0.12.0 (April 17, 2019)
+=====================
+* Fix Glyph.getPath() issue (PR #362, fixes #363) (thanks @solomancode!)
+* Add lowMemory mode (PR #329) (thanks @debussy2k!)
+* Update README (PR #377) (thanks @jolg42!)
+
+0.11.0 (October 22, 2018)
+=====================
+* Support Arabic text rendering (PR #359, fixes #46) (thanks @solomancode!)
+
+0.10.0 (August 14, 2018)
+=====================
+* font.download(): use window.URL instead of window.requestFileSystem, which works on a larger set of browsers : Chrome (32+), Opera (19+), Firefox (26+), Safari (7.1+), and all of Edge.
+
+0.9.0 (June 21, 2018)
+=====================
+* Update/Migrate rollup, update all dependencies, add package-lock.json and fix circular dependency (thanks @jolg42!)
+* Parse cmap table with platform id 0 as well (PR #350, fixes #348) (thanks @moyogo!)
+* Prevent auto-generated postScriptName from containing whitespace (#339) (thanks @mqudsi!)
+* Support non-Basic-Multilingual-Plane (BMP) characters (#338) (thanks @antonytse!)
+* GPOS: display correct error message in some cases of malformed data (#336) (thanks @fpirsch!)
+* Restore simple GPOS kerning in font.getKerningValue (#335) (thanks @fpirsch!)
+* Fix duplicated lineTo when using `getPath` (#328) (thanks @jolg42!)
+* Change example generate-font-node.js to be compatible with any Node.js version (thanks @jolg42!)
+
+0.8.0 (March 6, 2018)
+=====================
+* Fix loading font file on Android devices (thanks @maoamid!).
+* Fix loading fonts from a local source (file://data/... for Android for example (thanks @IntuilabGit!).
+* Fixing 2 issues when hinting "mutlu.ttf" (thanks @axkibe!).
+* Add some support for OpenType font variations (thanks @taylorb-monotype!).
+* Make cmap table format 12 if needed (thanks @Jolg42!).
+* Enable uglify's mangle and compress optimizations for a ~30% smaller minified file. (thanks @lojjic & @Jolg42!).
+* Better parsing of NULL pointers (thanks @fpirsch!).
+* Fix bad path init (empty glyphs) (thanks @fpirsch!).
+* Rewrite GPOS parsing (thanks @fpirsch!).
+* Roboto-Black.ttf updated (thanks @Jolg42!).
+
+0.7.3 (July 18, 2017)
+=====================
+* Fix "Object x already has key" error in Safari (thanks @neiltron!).
+* Fixed a bug where Font.getPaths() didn't pass options (thanks @keeslinp!).
+
+0.7.2 (June 7, 2017)
+====================
+* WOFF fonts with cvt tables now parse correctly.
+* Migrated to ES6 modules and let/const.
+* Use Rollup to bundle the JavaScript.
+
+0.7.1 (Apr 25, 2017)
+====================
+* Auto-generated glyph IDs (CID-keyed fonts) are now prefixed with "gid", e.g. "gid42".
+* Fix ligature substitution for fonts with coverage table format 2.
+* Better error messages when no valid cmap is found.
+
+0.7.0 (Apr 25, 2017)
+====================
+* Add font hinting (thanks @axkibe!)
+* Add support for CID-keyed fonts, thanks to @tshinnic.
+* TrueType fonts with signature 'true' or 'typ1' are also supported.
+* Fixing rounding issues.
+* Add GSUB and kern output in font-inspector.
+* Add font loading error callback.
+* Dev server turns browser caching off.
+* Add encoding support for variation adjustment deltas (thanks @brawer!).
+
+0.6.9 (Jan 17, 2017)
+====================
+* Add ligature rendering (thanks @fpirsch!)
+
+0.6.8 (Jan 9, 2017)
+=========================
+* Add a `getBoundingBox` method to the `Path` and `Glyph` objects.
+
+0.6.7 (Jan 5, 2017)
+=========================
+* Add basic support for Mac OS X format kern tables.
+
+0.6.6 (October 25, 2016)
+=========================
+* Add support for letter-spacing and tracking (thanks @lachmanski!).
+* Fixed a bug in the nameToGlyph function.
+
+0.6.5 (September 9, 2016)
+=========================
+* GSUB reading and writing by @fpirsch. This is still missing a user-friendly API.
+* Add support for cmap table format 12, which enables support for Unicode characters outside of the 0x0 - 0xFFFF range.
+* Better API documentation using [JSDoc](http://usejsdoc.org/).
+* Accessing xMin/... metrics works before path load. 
+
 0.6.4 (June 30, 2016)
 =========================
 * Add X/Y scale options to compute a streched path of a glyph.

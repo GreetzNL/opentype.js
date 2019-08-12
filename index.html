@@ -17,7 +17,10 @@
             <a href="font-inspector.html">Font Inspector</a>
             <a href="glyph-inspector.html">Glyph Inspector</a>
         </nav>
-        <a class="github" href="https://github.com/nodebox/opentype.js">Fork me on GitHub</a>
+        <nav class="right">
+            <a class="github" href="https://github.com/opentypejs/opentype.js">Fork me on GitHub</a>
+            <a class="gitter" href="https://gitter.im/opentypejs/opentype.js">Chat on Gitter</a>
+        </nav>
     </div>
 </div>
 
@@ -38,6 +41,8 @@
     <label><input type="checkbox" onchange="drawPointsChanged(this)" checked="checked">Draw Points</label>
     <label><input type="checkbox" onchange="drawMetricsChanged(this)">Draw Metrics</label>
     <label><input type="checkbox" onchange="kerningChanged(this)" checked="checked">Kerning</label>
+    <label><input type="checkbox" onchange="ligaturesChanged(this)" checked="checked">Ligatures</label>
+    <label id="hinting-label" class="disabled"><input id="hinting-checkbox" type="checkbox" onchange="hintingChanged(this)" disabled="true">Hinting</label>
 
     <hr>
 
@@ -66,8 +71,8 @@
 
     <div class="explain">
         <h1>Free Software</h1>
-        <p>opentype.js is available on <a href="https://github.com/nodebox/opentype.js">GitHub</a> under the <a href="https://raw.github.com/nodebox/opentype.js/master/LICENSE">MIT License</a>.</p>
-        <p>Copyright &copy; 2015 Frederik De Bleser.</p>
+        <p>opentype.js is available on <a href="https://github.com/opentypejs/opentype.js">GitHub</a> under the <a href="https://raw.github.com/opentypejs/opentype.js/master/LICENSE">MIT License</a>.</p>
+        <p>Copyright &copy; 2017 Frederik De Bleser.</p>
     </div>
 
     <hr>
@@ -81,6 +86,8 @@ var textToRender = "Hello, World!";
 var drawPoints = true;
 var drawMetrics = false;
 var kerning = true;
+var ligatures = true;
+var hinting = false;
 var previewPath = null;
 var snapPath = null;
 var snapStrength = 80;
@@ -88,6 +95,8 @@ var snapDistance = 53;
 var snapX = 0;
 var snapY = 0;
 var fontSizeSlider = document.getElementById("font-size-range");
+var hintingCheckbox = document.getElementById("hinting-checkbox");
+var hintingLabel = document.getElementById("hinting-label");
 
 function drawPointsChanged(e) {
     drawPoints = e.checked;
@@ -104,8 +113,18 @@ function kerningChanged(e) {
     renderText();
 }
 
+function ligaturesChanged(e) {
+    ligatures = e.checked;
+    renderText();
+}
+
+function hintingChanged(e) {
+    hinting = e.checked;
+    renderText();
+}
+
 function fontSizeChanged() {
-    fontSize = fontSizeSlider.value;
+    fontSize = parseInt(fontSizeSlider.value, 10);
     document.getElementById('fontSize').innerHTML = '' + fontSize;
     renderText();
 }
@@ -163,16 +182,24 @@ function renderText() {
     if (!font) return;
     textToRender = document.getElementById('textField').value;
     var previewCtx = document.getElementById('preview').getContext('2d');
+    var options = {
+        kerning: kerning,
+        hinting: hinting,
+        features: {
+            liga: ligatures,
+            rlig: ligatures
+        }
+    };
     previewCtx.clearRect(0, 0, 940, 300);
-    font.draw(previewCtx, textToRender, 0, 200, fontSize, {kerning: kerning});
+    font.draw(previewCtx, textToRender, 0, 200, fontSize, options);
     if (drawPoints) {
-        font.drawPoints(previewCtx, textToRender, 0, 200, fontSize, {kerning: kerning});
+        font.drawPoints(previewCtx, textToRender, 0, 200, fontSize, options);
     }
     if (drawMetrics) {
-        font.drawMetrics(previewCtx, textToRender, 0, 200, fontSize, {kerning: kerning});
+        font.drawMetrics(previewCtx, textToRender, 0, 200, fontSize, options);
     }
 
-    snapPath = font.getPath(textToRender, 0, 200, fontSize, {kerning: kerning});
+    snapPath = font.getPath(textToRender, 0, 200, fontSize, options);
     doSnap(snapPath);
     var snapCtx = document.getElementById('snap').getContext('2d');
     snapCtx.clearRect(0, 0, 940, 300);
@@ -240,6 +267,15 @@ function onFontLoaded(font) {
         glyph.drawMetrics(ctx, x, y, fontSize);
     }
 
+    if (font.hinting) {
+        hintingCheckbox.disabled = false;
+        hintingLabel.className = '';
+    } else {
+        hintingCheckbox.disabled = true;
+        hintingCheckbox.checked = false;
+        hintingLabel.className = 'disabled';
+    }
+
     renderText();
 }
 
@@ -255,10 +291,10 @@ function onReadFile(e) {
         } catch (err) {
             showErrorMessage(err.toString());
         }
-    }
+    };
     reader.onerror = function(err) {
         showErrorMessage(err.toString());
-    }
+    };
 
     reader.readAsArrayBuffer(file);
 }

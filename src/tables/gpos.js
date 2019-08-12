@@ -1,235 +1,126 @@
 // The `GPOS` table contains kerning pairs, among other things.
-// https://www.microsoft.com/typography/OTSPEC/gpos.htm
+// https://docs.microsoft.com/en-us/typography/opentype/spec/gpos
 
-'use strict';
+import check from '../check';
+import { Parser } from '../parse';
+import table from '../table';
 
-var check = require('../check');
-var parse = require('../parse');
+const subtableParsers = new Array(10);         // subtableParsers[0] is unused
 
-// Parse ScriptList and FeatureList tables of GPOS, GSUB, GDEF, BASE, JSTF tables.
-// These lists are unused by now, this function is just the basis for a real parsing.
-function parseTaggedListTable(data, start) {
-    var p = new parse.Parser(data, start);
-    var n = p.parseUShort();
-    var list = [];
-    for (var i = 0; i < n; i++) {
-        list[p.parseTag()] = { offset: p.parseUShort() };
-    }
-
-    return list;
-}
-
-// Parse a coverage table in a GSUB, GPOS or GDEF table.
-// Format 1 is a simple list of glyph ids,
-// Format 2 is a list of ranges. It is expanded in a list of glyphs, maybe not the best idea.
-function parseCoverageTable(data, start) {
-    var p = new parse.Parser(data, start);
-    var format = p.parseUShort();
-    var count =  p.parseUShort();
-    if (format === 1) {
-        return p.parseUShortList(count);
-    } else if (format === 2) {
-        var coverage = [];
-        for (; count--;) {
-            var begin = p.parseUShort();
-            var end = p.parseUShort();
-            var index = p.parseUShort();
-            for (var i = begin; i <= end; i++) {
-                coverage[index++] = i;
-            }
-        }
-
-        return coverage;
-    }
-}
-
-// Parse a Class Definition Table in a GSUB, GPOS or GDEF table.
-// Returns a function that gets a class value from a glyph ID.
-function parseClassDefTable(data, start) {
-    var p = new parse.Parser(data, start);
-    var format = p.parseUShort();
-    if (format === 1) {
-        // Format 1 specifies a range of consecutive glyph indices, one class per glyph ID.
-        var startGlyph = p.parseUShort();
-        var glyphCount = p.parseUShort();
-        var classes = p.parseUShortList(glyphCount);
-        return function(glyphID) {
-            return classes[glyphID - startGlyph] || 0;
+// https://docs.microsoft.com/en-us/typography/opentype/spec/gpos#lookup-type-1-single-adjustment-positioning-subtable
+// this = Parser instance
+subtableParsers[1] = function parseLookup1() {
+    const start = this.offset + this.relativeOffset;
+    const posformat = this.parseUShort();
+    if (posformat === 1) {
+        return {
+            posFormat: 1,
+            coverage: this.parsePointer(Parser.coverage),
+            value: this.parseValueRecord()
         };
-    } else if (format === 2) {
-        // Format 2 defines multiple groups of glyph indices that belong to the same class.
-        var rangeCount = p.parseUShort();
-        var startGlyphs = [];
-        var endGlyphs = [];
-        var classValues = [];
-        for (var i = 0; i < rangeCount; i++) {
-            startGlyphs[i] = p.parseUShort();
-            endGlyphs[i] = p.parseUShort();
-            classValues[i] = p.parseUShort();
-        }
-
-        return function(glyphID) {
-            var l = 0;
-            var r = startGlyphs.length - 1;
-            while (l < r) {
-                var c = (l + r + 1) >> 1;
-                if (glyphID < startGlyphs[c]) {
-                    r = c - 1;
-                } else {
-                    l = c;
-                }
-            }
-
-            if (startGlyphs[l] <= glyphID && glyphID <= endGlyphs[l]) {
-                return classValues[l] || 0;
-            }
-
-            return 0;
+    } else if (posformat === 2) {
+        return {
+            posFormat: 2,
+            coverage: this.parsePointer(Parser.coverage),
+            values: this.parseValueRecordList()
         };
     }
-}
+    check.assert(false, '0x' + start.toString(16) + ': GPOS lookup type 1 format must be 1 or 2.');
+};
 
-// Parse a pair adjustment positioning subtable, format 1 or format 2
-// The subtable is returned in the form of a lookup function.
-function parsePairPosSubTable(data, start) {
-    var p = new parse.Parser(data, start);
-    // This part is common to format 1 and format 2 subtables
-    var format = p.parseUShort();
-    var coverageOffset = p.parseUShort();
-    var coverage = parseCoverageTable(data, start + coverageOffset);
-    // valueFormat 4: XAdvance only, 1: XPlacement only, 0: no ValueRecord for second glyph
-    // Only valueFormat1=4 and valueFormat2=0 is supported.
-    var valueFormat1 = p.parseUShort();
-    var valueFormat2 = p.parseUShort();
-    var value1;
-    var value2;
-    if (valueFormat1 !== 4 || valueFormat2 !== 0) return;
-    var sharedPairSets = {};
-    if (format === 1) {
-        // Pair Positioning Adjustment: Format 1
-        var pairSetCount = p.parseUShort();
-        var pairSet = [];
-        // Array of offsets to PairSet tables-from beginning of PairPos subtable-ordered by Coverage Index
-        var pairSetOffsets = p.parseOffset16List(pairSetCount);
-        for (var firstGlyph = 0; firstGlyph < pairSetCount; firstGlyph++) {
-            var pairSetOffset = pairSetOffsets[firstGlyph];
-            var sharedPairSet = sharedPairSets[pairSetOffset];
-            if (!sharedPairSet) {
-                // Parse a pairset table in a pair adjustment subtable format 1
-                sharedPairSet = {};
-                p.relativeOffset = pairSetOffset;
-                var pairValueCount = p.parseUShort();
-                for (; pairValueCount--;) {
-                    var secondGlyph = p.parseUShort();
-                    if (valueFormat1) value1 = p.parseShort();
-                    if (valueFormat2) value2 = p.parseShort();
-                    // We only support valueFormat1 = 4 and valueFormat2 = 0,
-                    // so value1 is the XAdvance and value2 is empty.
-                    sharedPairSet[secondGlyph] = value1;
-                }
-            }
-
-            pairSet[coverage[firstGlyph]] = sharedPairSet;
-        }
-
-        return function(leftGlyph, rightGlyph) {
-            var pairs = pairSet[leftGlyph];
-            if (pairs) return pairs[rightGlyph];
+// https://docs.microsoft.com/en-us/typography/opentype/spec/gpos#lookup-type-2-pair-adjustment-positioning-subtable
+subtableParsers[2] = function parseLookup2() {
+    const start = this.offset + this.relativeOffset;
+    const posFormat = this.parseUShort();
+    check.assert(posFormat === 1 || posFormat === 2, '0x' + start.toString(16) + ': GPOS lookup type 2 format must be 1 or 2.');
+    const coverage = this.parsePointer(Parser.coverage);
+    const valueFormat1 = this.parseUShort();
+    const valueFormat2 = this.parseUShort();
+    if (posFormat === 1) {
+        // Adjustments for Glyph Pairs
+        return {
+            posFormat: posFormat,
+            coverage: coverage,
+            valueFormat1: valueFormat1,
+            valueFormat2: valueFormat2,
+            pairSets: this.parseList(Parser.pointer(Parser.list(function() {
+                return {        // pairValueRecord
+                    secondGlyph: this.parseUShort(),
+                    value1: this.parseValueRecord(valueFormat1),
+                    value2: this.parseValueRecord(valueFormat2)
+                };
+            })))
         };
-    } else if (format === 2) {
-        // Pair Positioning Adjustment: Format 2
-        var classDef1Offset = p.parseUShort();
-        var classDef2Offset = p.parseUShort();
-        var class1Count = p.parseUShort();
-        var class2Count = p.parseUShort();
-        var getClass1 = parseClassDefTable(data, start + classDef1Offset);
-        var getClass2 = parseClassDefTable(data, start + classDef2Offset);
-
-        // Parse kerning values by class pair.
-        var kerningMatrix = [];
-        for (var i = 0; i < class1Count; i++) {
-            var kerningRow = kerningMatrix[i] = [];
-            for (var j = 0; j < class2Count; j++) {
-                if (valueFormat1) value1 = p.parseShort();
-                if (valueFormat2) value2 = p.parseShort();
-                // We only support valueFormat1 = 4 and valueFormat2 = 0,
-                // so value1 is the XAdvance and value2 is empty.
-                kerningRow[j] = value1;
-            }
-        }
-
-        // Convert coverage list to a hash
-        var covered = {};
-        for (i = 0; i < coverage.length; i++) covered[coverage[i]] = 1;
-
-        // Get the kerning value for a specific glyph pair.
-        return function(leftGlyph, rightGlyph) {
-            if (!covered[leftGlyph]) return;
-            var class1 = getClass1(leftGlyph);
-            var class2 = getClass2(rightGlyph);
-            var kerningRow = kerningMatrix[class1];
-
-            if (kerningRow) {
-                return kerningRow[class2];
-            }
+    } else if (posFormat === 2) {
+        const classDef1 = this.parsePointer(Parser.classDef);
+        const classDef2 = this.parsePointer(Parser.classDef);
+        const class1Count = this.parseUShort();
+        const class2Count = this.parseUShort();
+        return {
+            // Class Pair Adjustment
+            posFormat: posFormat,
+            coverage: coverage,
+            valueFormat1: valueFormat1,
+            valueFormat2: valueFormat2,
+            classDef1: classDef1,
+            classDef2: classDef2,
+            class1Count: class1Count,
+            class2Count: class2Count,
+            classRecords: this.parseList(class1Count, Parser.list(class2Count, function() {
+                return {
+                    value1: this.parseValueRecord(valueFormat1),
+                    value2: this.parseValueRecord(valueFormat2)
+                };
+            }))
         };
     }
-}
+};
 
-// Parse a LookupTable (present in of GPOS, GSUB, GDEF, BASE, JSTF tables).
-function parseLookupTable(data, start) {
-    var p = new parse.Parser(data, start);
-    var lookupType = p.parseUShort();
-    var lookupFlag = p.parseUShort();
-    var useMarkFilteringSet = lookupFlag & 0x10;
-    var subTableCount = p.parseUShort();
-    var subTableOffsets = p.parseOffset16List(subTableCount);
-    var table = {
-        lookupType: lookupType,
-        lookupFlag: lookupFlag,
-        markFilteringSet: useMarkFilteringSet ? p.parseUShort() : -1
-    };
-    // LookupType 2, Pair adjustment
-    if (lookupType === 2) {
-        var subtables = [];
-        for (var i = 0; i < subTableCount; i++) {
-            subtables.push(parsePairPosSubTable(data, start + subTableOffsets[i]));
-        }
-        // Return a function which finds the kerning values in the subtables.
-        table.getKerningValue = function(leftGlyph, rightGlyph) {
-            for (var i = subtables.length; i--;) {
-                var value = subtables[i] ? subtables[i](leftGlyph, rightGlyph) : 0;
-                if (value !== undefined) return value;
-            }
-            return 0;
+subtableParsers[3] = function parseLookup3() { return { error: 'GPOS Lookup 3 not supported' }; };
+subtableParsers[4] = function parseLookup4() { return { error: 'GPOS Lookup 4 not supported' }; };
+subtableParsers[5] = function parseLookup5() { return { error: 'GPOS Lookup 5 not supported' }; };
+subtableParsers[6] = function parseLookup6() { return { error: 'GPOS Lookup 6 not supported' }; };
+subtableParsers[7] = function parseLookup7() { return { error: 'GPOS Lookup 7 not supported' }; };
+subtableParsers[8] = function parseLookup8() { return { error: 'GPOS Lookup 8 not supported' }; };
+subtableParsers[9] = function parseLookup9() { return { error: 'GPOS Lookup 9 not supported' }; };
+
+// https://docs.microsoft.com/en-us/typography/opentype/spec/gpos
+function parseGposTable(data, start) {
+    start = start || 0;
+    const p = new Parser(data, start);
+    const tableVersion = p.parseVersion(1);
+    check.argument(tableVersion === 1 || tableVersion === 1.1, 'Unsupported GPOS table version ' + tableVersion);
+
+    if (tableVersion === 1) {
+        return {
+            version: tableVersion,
+            scripts: p.parseScriptList(),
+            features: p.parseFeatureList(),
+            lookups: p.parseLookupList(subtableParsers)
+        };
+    } else {
+        return {
+            version: tableVersion,
+            scripts: p.parseScriptList(),
+            features: p.parseFeatureList(),
+            lookups: p.parseLookupList(subtableParsers),
+            variations: p.parseFeatureVariationsList()
         };
     }
 
-    return table;
 }
 
-// Parse the `GPOS` table which contains, among other things, kerning pairs.
-// https://www.microsoft.com/typography/OTSPEC/gpos.htm
-function parseGposTable(data, start, font) {
-    var p = new parse.Parser(data, start);
-    var tableVersion = p.parseFixed();
-    check.argument(tableVersion === 1, 'Unsupported GPOS table version.');
+// GPOS Writing //////////////////////////////////////////////
+// NOT SUPPORTED
+const subtableMakers = new Array(10);
 
-    // ScriptList and FeatureList - ignored for now
-    parseTaggedListTable(data, start + p.parseUShort());
-    // 'kern' is the feature we are looking for.
-    parseTaggedListTable(data, start + p.parseUShort());
-
-    // LookupList
-    var lookupListOffset = p.parseUShort();
-    p.relativeOffset = lookupListOffset;
-    var lookupCount = p.parseUShort();
-    var lookupTableOffsets = p.parseOffset16List(lookupCount);
-    var lookupListAbsoluteOffset = start + lookupListOffset;
-    for (var i = 0; i < lookupCount; i++) {
-        var table = parseLookupTable(data, lookupListAbsoluteOffset + lookupTableOffsets[i]);
-        if (table.lookupType === 2 && !font.getGposKerningValue) font.getGposKerningValue = table.getKerningValue;
-    }
+function makeGposTable(gpos) {
+    return new table.Table('GPOS', [
+        {name: 'version', type: 'ULONG', value: 0x10000},
+        {name: 'scripts', type: 'TABLE', value: new table.ScriptList(gpos.scripts)},
+        {name: 'features', type: 'TABLE', value: new table.FeatureList(gpos.features)},
+        {name: 'lookups', type: 'TABLE', value: new table.LookupList(gpos.lookups, subtableMakers)}
+    ]);
 }
 
-exports.parse = parseGposTable;
+export default { parse: parseGposTable, make: makeGposTable };

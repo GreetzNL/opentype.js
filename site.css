@@ -44,6 +44,26 @@ body {
     background: #ddd;
 }
 
+.header nav.right {
+    float: right;
+    position: relative;
+    line-height: 40px;
+    text-decoration: none;
+    color: #44d;
+}
+
+.header nav.right a {
+    display: inline-block;
+    padding: 0 10px;
+    font-weight: 500;
+    border-left: 1px solid #ccc;
+    margin: 0;
+}
+
+.header nav.right a:first-child {
+    border-left: none;
+}
+
 .container {
     width: 940px;
     margin-left: auto;
@@ -139,14 +159,6 @@ label {
 
 label input[type="range"] {
     vertical-align: middle;
-}
-
-a.github {
-    float: right;
-    position: relative;
-    line-height: 40px;
-    text-decoration: none;
-    color: #44d;
 }
 
 a {
@@ -254,10 +266,21 @@ canvas.item:hover {
     left: 0;
 }
 
-#glyph-data { float: left; margin-left: 2em; }
+#glyph-data {
+    float: left;
+    margin-left: 2em;
+    display: flex;
+    flex-flow: column nowrap;
+    height: 500px;
+}
 #glyph-data dl { margin: 0; }
 #glyph-data dt { float: left; }
 #glyph-data dd { margin-left: 12em; }
+
+#glyph-contours {
+    flex: 1 1 0;
+    overflow: auto;
+}
 
 #glyph-data pre { font-size: 11px; }
 pre:not(.contour) { margin: 0; }
@@ -265,4 +288,6 @@ pre.contour { margin: 0 0 1em 2em; border-bottom: solid 1px #a0a0a0; }
 span.oncurve { color: blue; }
 span.offcurve { color: red; }
 
-
+.disabled {
+	color: gray;
+}

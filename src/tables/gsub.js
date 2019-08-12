@@ -1,17 +1,16 @@
 // The `GSUB` table contains ligatures, among other things.
 // https://www.microsoft.com/typography/OTSPEC/gsub.htm
 
-'use strict';
+import check from '../check';
+import { Parser } from '../parse';
+import table from '../table';
 
-var check = require('../check');
-var Parser = require('../parse').Parser;
-var subtableParsers = new Array(9);         // subtableParsers[0] is unused
-var table = require('../table');
+const subtableParsers = new Array(9);         // subtableParsers[0] is unused
 
 // https://www.microsoft.com/typography/OTSPEC/GSUB.htm#SS
 subtableParsers[1] = function parseLookup1() {
-    var start = this.offset + this.relativeOffset;
-    var substFormat = this.parseUShort();
+    const start = this.offset + this.relativeOffset;
+    const substFormat = this.parseUShort();
     if (substFormat === 1) {
         return {
             substFormat: 1,
@@ -30,7 +29,7 @@ subtableParsers[1] = function parseLookup1() {
 
 // https://www.microsoft.com/typography/OTSPEC/GSUB.htm#MS
 subtableParsers[2] = function parseLookup2() {
-    var substFormat = this.parseUShort();
+    const substFormat = this.parseUShort();
     check.argument(substFormat === 1, 'GSUB Multiple Substitution Subtable identifier-format must be 1');
     return {
         substFormat: substFormat,
@@ -41,7 +40,7 @@ subtableParsers[2] = function parseLookup2() {
 
 // https://www.microsoft.com/typography/OTSPEC/GSUB.htm#AS
 subtableParsers[3] = function parseLookup3() {
-    var substFormat = this.parseUShort();
+    const substFormat = this.parseUShort();
     check.argument(substFormat === 1, 'GSUB Alternate Substitution Subtable identifier-format must be 1');
     return {
         substFormat: substFormat,
@@ -52,7 +51,7 @@ subtableParsers[3] = function parseLookup3() {
 
 // https://www.microsoft.com/typography/OTSPEC/GSUB.htm#LS
 subtableParsers[4] = function parseLookup4() {
-    var substFormat = this.parseUShort();
+    const substFormat = this.parseUShort();
     check.argument(substFormat === 1, 'GSUB ligature table identifier-format must be 1');
     return {
         substFormat: substFormat,
@@ -66,23 +65,23 @@ subtableParsers[4] = function parseLookup4() {
     };
 };
 
-var lookupRecordDesc = {
+const lookupRecordDesc = {
     sequenceIndex: Parser.uShort,
     lookupListIndex: Parser.uShort
 };
 
 // https://www.microsoft.com/typography/OTSPEC/GSUB.htm#CSF
 subtableParsers[5] = function parseLookup5() {
-    var start = this.offset + this.relativeOffset;
-    var substFormat = this.parseUShort();
+    const start = this.offset + this.relativeOffset;
+    const substFormat = this.parseUShort();
 
     if (substFormat === 1) {
         return {
             substFormat: substFormat,
             coverage: this.parsePointer(Parser.coverage),
             ruleSets: this.parseListOfLists(function() {
-                var glyphCount = this.parseUShort();
-                var substCount = this.parseUShort();
+                const glyphCount = this.parseUShort();
+                const substCount = this.parseUShort();
                 return {
                     input: this.parseUShortList(glyphCount - 1),
                     lookupRecords: this.parseRecordList(substCount, lookupRecordDesc)
@@ -95,8 +94,8 @@ subtableParsers[5] = function parseLookup5() {
             coverage: this.parsePointer(Parser.coverage),
             classDef: this.parsePointer(Parser.classDef),
             classSets: this.parseListOfLists(function() {
-                var glyphCount = this.parseUShort();
-                var substCount = this.parseUShort();
+                const glyphCount = this.parseUShort();
+                const substCount = this.parseUShort();
                 return {
                     classes: this.parseUShortList(glyphCount - 1),
                     lookupRecords: this.parseRecordList(substCount, lookupRecordDesc)
@@ -104,8 +103,8 @@ subtableParsers[5] = function parseLookup5() {
             })
         };
     } else if (substFormat === 3) {
-        var glyphCount = this.parseUShort();
-        var substCount = this.parseUShort();
+        const glyphCount = this.parseUShort();
+        const substCount = this.parseUShort();
         return {
             substFormat: substFormat,
             coverages: this.parseList(glyphCount, Parser.pointer(Parser.coverage)),
@@ -117,9 +116,8 @@ subtableParsers[5] = function parseLookup5() {
 
 // https://www.microsoft.com/typography/OTSPEC/GSUB.htm#CC
 subtableParsers[6] = function parseLookup6() {
-    // TODO add automated tests for lookup 6 : no examples in the MS doc.
-    var start = this.offset + this.relativeOffset;
-    var substFormat = this.parseUShort();
+    const start = this.offset + this.relativeOffset;
+    const substFormat = this.parseUShort();
     if (substFormat === 1) {
         return {
             substFormat: 1,
@@ -164,10 +162,10 @@ subtableParsers[6] = function parseLookup6() {
 // https://www.microsoft.com/typography/OTSPEC/GSUB.htm#ES
 subtableParsers[7] = function parseLookup7() {
     // Extension Substitution subtable
-    var substFormat = this.parseUShort();
+    const substFormat = this.parseUShort();
     check.argument(substFormat === 1, 'GSUB Extension Substitution subtable identifier-format must be 1');
-    var extensionLookupType = this.parseUShort();
-    var extensionParser = new Parser(this.data, this.offset + this.parseULong());
+    const extensionLookupType = this.parseUShort();
+    const extensionParser = new Parser(this.data, this.offset + this.parseULong());
     return {
         substFormat: 1,
         lookupType: extensionLookupType,
@@ -177,7 +175,7 @@ subtableParsers[7] = function parseLookup7() {
 
 // https://www.microsoft.com/typography/OTSPEC/GSUB.htm#RCCS
 subtableParsers[8] = function parseLookup8() {
-    var substFormat = this.parseUShort();
+    const substFormat = this.parseUShort();
     check.argument(substFormat === 1, 'GSUB Reverse Chaining Contextual Single Substitution Subtable identifier-format must be 1');
     return {
         substFormat: substFormat,
@@ -191,19 +189,30 @@ subtableParsers[8] = function parseLookup8() {
 // https://www.microsoft.com/typography/OTSPEC/gsub.htm
 function parseGsubTable(data, start) {
     start = start || 0;
-    var p = new Parser(data, start);
-    var tableVersion = p.parseVersion();
-    check.argument(tableVersion === 1, 'Unsupported GSUB table version.');
-    return {
-        version: tableVersion,
-        scripts: p.parseScriptList(),
-        features: p.parseFeatureList(),
-        lookups: p.parseLookupList(subtableParsers)
-    };
+    const p = new Parser(data, start);
+    const tableVersion = p.parseVersion(1);
+    check.argument(tableVersion === 1 || tableVersion === 1.1, 'Unsupported GSUB table version.');
+    if (tableVersion === 1) {
+        return {
+            version: tableVersion,
+            scripts: p.parseScriptList(),
+            features: p.parseFeatureList(),
+            lookups: p.parseLookupList(subtableParsers)
+        };
+    } else {
+        return {
+            version: tableVersion,
+            scripts: p.parseScriptList(),
+            features: p.parseFeatureList(),
+            lookups: p.parseLookupList(subtableParsers),
+            variations: p.parseFeatureVariationsList()
+        };
+    }
+
 }
 
 // GSUB Writing //////////////////////////////////////////////
-var subtableMakers = new Array(9);
+const subtableMakers = new Array(9);
 
 subtableMakers[1] = function makeLookup1(subtable) {
     if (subtable.substFormat === 1) {
@@ -213,9 +222,22 @@ subtableMakers[1] = function makeLookup1(subtable) {
             {name: 'deltaGlyphID', type: 'USHORT', value: subtable.deltaGlyphId}
         ]);
     } else {
-        check.assert(false, 'Can\'t write lookup type 1 subtable format 2.');
+        return new table.Table('substitutionTable', [
+            {name: 'substFormat', type: 'USHORT', value: 2},
+            {name: 'coverage', type: 'TABLE', value: new table.Coverage(subtable.coverage)}
+        ].concat(table.ushortList('substitute', subtable.substitute)));
     }
-    check.assert(false, 'Lookup type 1 substFormat must be 1 or 2.');
+    check.fail('Lookup type 1 substFormat must be 1 or 2.');
+};
+
+subtableMakers[3] = function makeLookup3(subtable) {
+    check.assert(subtable.substFormat === 1, 'Lookup type 3 substFormat must be 1.');
+    return new table.Table('substitutionTable', [
+        {name: 'substFormat', type: 'USHORT', value: 1},
+        {name: 'coverage', type: 'TABLE', value: new table.Coverage(subtable.coverage)}
+    ].concat(table.tableList('altSet', subtable.alternateSets, function(alternateSet) {
+        return new table.Table('alternateSetTable', table.ushortList('alternate', alternateSet));
+    })));
 };
 
 subtableMakers[4] = function makeLookup4(subtable) {
@@ -234,45 +256,12 @@ subtableMakers[4] = function makeLookup4(subtable) {
 };
 
 function makeGsubTable(gsub) {
-    // Feature limitation - we can only write the table in the most simple cases.
-    var onlyDfltScript = (gsub.scripts.length === 1 && gsub.scripts[0].tag === 'DFLT');
-    check.assert(onlyDfltScript, 'Unable to write: GSUB table must contain only the DFLT script.');
-    var dfltScript = gsub.scripts[0].script;
-    var onlyDfltLang = (dfltScript.defaultLangSys && dfltScript.langSysRecords.length === 0);
-    check.assert(onlyDfltLang, 'Unable to write: GSUB table must contain only the default language system.');
-
-    for (var i = 0; i < gsub.lookups.length; i++) {
-        var lookup = gsub.lookups[i];
-        var canWriteLookup = (lookup.lookupType === 4);
-        check.assert(canWriteLookup, 'Unable to write: GSUB table must contain only type 4 lookup tables');
-    }
-
-    var scriptList = new table.Table('scriptList', [
-        {name: 'scriptCount', type: 'USHORT', value: 1},
-        {name: 'scriptTag_0', type: 'TAG', value: 'DFLT'},
-        {name: 'script_0', type: 'TABLE', value: new table.Table('scriptTable', [
-            {name: 'defaultLangSys', type: 'TABLE', value: new table.Table('langSysTable', [
-                {name: 'lookupOrder', type: 'USHORT', value: 0},
-                {name: 'reqFeatureIndex', type: 'USHORT', value: 0xffff},
-                {name: 'featureCount', type: 'USHORT', value: gsub.features.length},
-                {name: 'featureIndex_0', type: 'USHORT', value: 0}
-            ])},
-            {name: 'langSysCount', type: 'USHORT', value: 0}
-        ])},
-    ]);
-
-    var featureList = new table.FeatureList(gsub.features);
-    var lookupList = new table.LookupList(gsub.lookups, subtableMakers);
-
-    var gsubTable = new table.Table('GSUB', [
+    return new table.Table('GSUB', [
         {name: 'version', type: 'ULONG', value: 0x10000},
-        {name: 'scripts', type: 'TABLE', value: scriptList},
-        {name: 'features', type: 'TABLE', value: featureList},
-        {name: 'lookups', type: 'TABLE', value: lookupList}
+        {name: 'scripts', type: 'TABLE', value: new table.ScriptList(gsub.scripts)},
+        {name: 'features', type: 'TABLE', value: new table.FeatureList(gsub.features)},
+        {name: 'lookups', type: 'TABLE', value: new table.LookupList(gsub.lookups, subtableMakers)}
     ]);
-
-    return gsubTable;
 }
 
-exports.parse = parseGsubTable;
-exports.make = makeGsubTable;
+export default { parse: parseGsubTable, make: makeGsubTable };

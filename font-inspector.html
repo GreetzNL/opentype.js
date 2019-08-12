@@ -16,7 +16,10 @@
             <a href="font-inspector.html">Font Inspector</a>
             <a href="glyph-inspector.html">Glyph Inspector</a>
         </nav>
-        <a class="github" href="https://github.com/nodebox/opentype.js">Fork me on GitHub</a>
+        <nav class="right">
+            <a class="github" href="https://github.com/opentypejs/opentype.js">Fork me on GitHub</a>
+            <a class="gitter" href="https://gitter.im/opentypejs/opentype.js">Chat on Gitter</a>
+        </nav>
     </div>
 </div>
 
@@ -37,28 +40,53 @@
     <div id="font-data">
         <h3 class="collapsed">Font Header table <a href="https://www.microsoft.com/typography/OTSPEC/head.htm" target="_blank">head</a></h3>
         <dl id="head-table"><dt>Undefined</dt></dl>
+
         <h3 class="collapsed">Horizontal Header table <a href="https://www.microsoft.com/typography/OTSPEC/hhea.htm" target="_blank">hhea</a></h3>
         <dl id="hhea-table"><dt>Undefined</dt></dl>
+
         <h3 class="collapsed">Maximum Profile table <a href="https://www.microsoft.com/typography/OTSPEC/maxp.htm" target="_blank">maxp</a></h3>
         <dl id="maxp-table"><dt>Undefined</dt></dl>
+
         <h3 class="collapsed">Naming table <a href="https://www.microsoft.com/typography/OTSPEC/name.htm" target="_blank">name</a></h3>
         <dl id="name-table"><dt>Undefined</dt></dl>
+
         <h3 class="collapsed">OS/2 and Windows Metrics table <a href="https://www.microsoft.com/typography/OTSPEC/os2.htm" target="_blank">OS/2</a></h3>
         <dl id="os2-table"><dt>Undefined</dt></dl>
+
         <h3 class="collapsed">PostScript table <a href="https://www.microsoft.com/typography/OTSPEC/post.htm" target="_blank">post</a></h3>
         <dl id="post-table"><dt>Undefined</dt></dl>
+
         <h3 class="collapsed">Character To Glyph Index Mapping Table <a href="https://www.microsoft.com/typography/OTSPEC/cmap.htm" target="_blank">cmap</a></h3>
         <dl id="cmap-table"><dt>Undefined</dt></dl>
+
         <h3 class="collapsed">Font Variations table <a href="https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6fvar.html" target="_blank">fvar</a></h3>
         <dl id="fvar-table"><dt>Undefined</dt></dl>
+
+        <h3 class="collapsed">Metadata table <a href="https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6meta.html" target="_blank">meta</a></h3>
+        <dl id="meta-table"><dt>Undefined</dt></dl>
+
+        <h3 class="collapsed">Control Value Table <a href="https://www.microsoft.com/typography/OTSPEC/cvt.htm" target="_blank">cvt</a></h3>
+        <dl id="cvt-table"><dt>Undefined</dt></dl>
+
+        <h3 class="collapsed">CVT Program <a href="https://www.microsoft.com/typography/OTSPEC/prep.htm" target="_blank">prep</a></h3>
+        <dl id="prep-table"><dt>Undefined</dt></dl>
+
+        <h3 class="collapsed">Font program <a href="https://www.microsoft.com/typography/OTSPEC/fpgm.htm" target="_blank">fpgm</a></h3>
+        <dl id="fpgm-table"><dt>Undefined</dt></dl>
+
+        <h3 class="collapsed">Glyph Substitution Table <a href="https://www.microsoft.com/typography/OTSPEC/GSUB.htm" target="_blank">GSUB</a></h3>
+        <dl id="gsub-table"><dt>Undefined</dt></dl>
+
+        <h3 class="collapsed">Kerning <a href="https://www.microsoft.com/typography/otspec/kern.htm" target="_blank">kern</a></h3>
+        <dl id="kern-table"><dt>Undefined</dt></dl>
     </div>
 
     <hr>
 
     <div class="explain">
         <h1>Free Software</h1>
-        <p>opentype.js is available on <a href="https://github.com/nodebox/opentype.js">GitHub</a> under the <a href="https://raw.github.com/nodebox/opentype.js/master/LICENSE">MIT License</a>.</p>
-        <p>Copyright &copy; 2015 Frederik De Bleser.</p>
+        <p>opentype.js is available on <a href="https://github.com/opentypejs/opentype.js">GitHub</a> under the <a href="https://raw.github.com/opentypejs/opentype.js/master/LICENSE">MIT License</a>.</p>
+        <p>Copyright &copy; 2017 Frederik De Bleser.</p>
     </div>
 
     <hr>
@@ -101,7 +129,17 @@ function renderText() {
     var previewCanvas = document.getElementById('preview');
     var previewCtx = previewCanvas.getContext("2d");
     previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-    font.draw(previewCtx, textToRender, 0, 32, fontSize, {kerning: true});
+    font.draw(previewCtx, textToRender, 0, 32, fontSize, {
+        kerning: true,
+        features: [
+        /**
+         * these 4 features are required to render Arabic text properly
+         * and shouldn't be turned off when rendering arabic text.
+         */
+            { script: 'arab', tags: ['init', 'medi', 'fina', 'rlig'] },
+            { script: 'latn', tags: ['liga', 'rlig'] }
+        ]
+    });
 }
 
 function showErrorMessage(message) {
@@ -146,6 +184,7 @@ function displayNames(names) {
 
 function displayFontData() {
     var html, tablename, table, property, value;
+
     for (tablename in font.tables) {
         table = font.tables[tablename];
         if (tablename == 'name') {
@@ -177,6 +216,13 @@ function displayFontData() {
             element.innerHTML = html;
         }
     }
+
+    if(font.kerningPairs) {
+        var element = document.getElementById("kern-table");
+        if (element) {
+            element.innerHTML = '<dt>' + Object.keys(font.kerningPairs).length + ' Pairs</dt><dd>' + JSON.stringify(font.kerningPairs) + '</dd>';
+        }
+    }
 }
 
 function onFontLoaded(font) {
@@ -191,7 +237,7 @@ function onReadFile(e) {
     var reader = new FileReader();
     reader.onload = function(e) {
         try {
-            font = opentype.parse(e.target.result);
+            font = opentype.parse(e.target.result, {lowMemory:true});
             onFontLoaded(font);
             showErrorMessage('');
         } catch (err) {
@@ -199,10 +245,10 @@ function onReadFile(e) {
             if (err.stack) console.log(err.stack);
 	    throw(err);
         }
-    }
+    };
     reader.onerror = function(err) {
         showErrorMessage(err.toString());
-    }
+    };
 
     reader.readAsArrayBuffer(file);
 }
@@ -230,7 +276,7 @@ opentype.load(fontFileName, function(err, font) {
         return;
     }
     onFontLoaded(font);
-});
+}, {lowMemory:true});
 </script>
 </body>
 </html>

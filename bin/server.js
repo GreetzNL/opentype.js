@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-'use strict';
-
 var fs = require('fs');
 var http = require('http');
 var path = require('path');
+var rollup = require('rollup');
+var rollupConfig = require('../rollup.config');
 
 var CONTENT_TYPES = {
     '.html': 'text/html',
@@ -12,7 +12,9 @@ var CONTENT_TYPES = {
     '.png': 'image/png',
     '.js': 'text/javascript',
     '.ttf': 'font/otf',
-    '.otf': 'font/otf'
+    '.otf': 'font/otf',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
 };
 
 http.createServer(function(req, res) {
@@ -20,12 +22,6 @@ http.createServer(function(req, res) {
     var url = req.url.substring(1);
     if (url.length === 0) {
         url = 'index.html';
-        rewrite = ' -> ' + url;
-    } else if (url === 'dist/opentype.js') {
-        url = 'build/opentype.js';
-        rewrite = ' -> ' + url;
-    } else if (url === '../dist/opentype.js') {
-        url = '../build/opentype.js';
         rewrite = ' -> ' + url;
     }
 
@@ -37,10 +33,32 @@ http.createServer(function(req, res) {
             res.end('Error: ' + err);
         } else {
             var contentType = CONTENT_TYPES[path.extname(filePath)] || 'text/plain';
-            res.writeHead(200, {'Content-Type': contentType});
+            res.writeHead(200, {
+                'Content-Type': contentType,
+                'Cache-Control': 'max-age=0'
+            });
             res.end(data);
         }
     });
 }).listen(8080);
+console.log('Server running at http://localhost:8080/');
 
-console.log('Server running on port 8080.');
+// Watch changes and rebundle
+var watcher = rollup.watch(rollupConfig);
+watcher.on('event', e => {
+    // event.code can be one of:
+    //   START        — the watcher is (re)starting
+    //   BUNDLE_START — building an individual bundle
+    //   BUNDLE_END   — finished building a bundle
+    //   END          — finished building all bundles
+    //   ERROR        — encountered an error while bundling
+    //   FATAL        — encountered an unrecoverable error
+
+    if (e.code === 'BUNDLE_START') {
+        console.log('Bundling...');
+    } else if (e.code === 'BUNDLE_END') {
+        console.log('Bundled in ' + e.duration + 'ms.');
+    } else if (e.code === 'ERROR' || e.code === 'FATAL') {
+        console.error(e.error);
+    }
+});
