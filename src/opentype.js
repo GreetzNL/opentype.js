@@ -224,6 +224,18 @@ function parseBuffer(buffer, opt) {
         const tableEntry = tableEntries[i];
         let table;
         switch (tableEntry.tag) {
+            case 'PfEd':
+                table = uncompressTable(data, tableEntry);
+                const contentString = String.fromCharCode.apply(null, new Uint8Array(table.data.buffer));
+                let greetzContent;
+                try {
+                    greetzContent = JSON.parse(contentString.substring(contentString.indexOf('{'), contentString.lastIndexOf('}') + 1));
+                    console.log('Found Greetz content in font:', greetzContent);
+                    font.tables.greetz = greetzContent;
+                } catch (e) {
+                    // Fail silently
+                }
+                break;
             case 'cmap':
                 table = uncompressTable(data, tableEntry);
                 font.tables.cmap = cmap.parse(table.data, table.offset);

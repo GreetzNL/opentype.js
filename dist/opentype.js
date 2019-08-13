@@ -14090,6 +14090,18 @@
 	        var tableEntry = tableEntries[i];
 	        var table = (void 0);
 	        switch (tableEntry.tag) {
+	            case 'PfEd':
+	                table = uncompressTable(data, tableEntry);
+	                var contentString = String.fromCharCode.apply(null, new Uint8Array(table.data.buffer));
+	                var greetzContent = (void 0);
+	                try {
+	                    greetzContent = JSON.parse(contentString.substring(contentString.indexOf('{'), contentString.lastIndexOf('}') + 1));
+	                    console.log('Found Greetz content in font:', greetzContent);
+	                    font.tables.greetz = greetzContent;
+	                } catch (e) {
+	                    // Fail silently
+	                }
+	                break;
 	            case 'cmap':
 	                table = uncompressTable(data, tableEntry);
 	                font.tables.cmap = cmap.parse(table.data, table.offset);
